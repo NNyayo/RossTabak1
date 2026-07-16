@@ -1,0 +1,4 @@
+// Application-level settings for the Runner target.
+PRODUCT_NAME = Rosstabak
+PRODUCT_BUNDLE_IDENTIFIER = com.rosstabak.manager
+PRODUCT_COPYRIGHT = Copyright © 2026 Rosstabak. All rights reserved.
