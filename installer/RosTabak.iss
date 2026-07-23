@@ -29,6 +29,12 @@ DestDir: "{app}"; \
 Flags: recursesubdirs createallsubdirs
 
 
+; Visual C++ Runtime installer
+Source: "vc_redist.x64.exe"; \
+DestDir: "{tmp}"; \
+Flags: deleteafterinstall
+
+
 [Icons]
 
 Name: "{autodesktop}\RosTabak"; \
@@ -39,6 +45,10 @@ Filename: "{app}\{#MyAppExeName}"
 
 
 [Run]
+
+Filename: "{tmp}\vc_redist.x64.exe"; \
+Parameters: "/install /quiet /norestart"; \
+StatusMsg: "Установка компонентов Microsoft Visual C++..."
 
 Filename: "{app}\{#MyAppExeName}"; \
 Description: "Запустить RosTabak"; \
