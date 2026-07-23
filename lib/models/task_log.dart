@@ -27,13 +27,14 @@ class TaskLog {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = {
       'task_id': taskId,
       'employee_id': employeeId,
       'action': action,
       'description': description,
       'created_at': createdAt,
     };
+    if (id != null) map['id'] = id;
+    return map;
   }
 }

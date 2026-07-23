@@ -2,6 +2,9 @@ name: Build Release
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   macos:
@@ -22,11 +25,16 @@ jobs:
       - name: Build macOS
         run: flutter build macos --release
 
+      - name: Compress macOS .app
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r Rosstabak-macOS.zip Rosstabak.app
+
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: Rosstabak-macOS
-          path: build/macos/Build/Products/Release/Rosstabak.app
+          path: build/macos/Build/Products/Release/Rosstabak-macOS.zip
           retention-days: 7
 
   windows:
@@ -47,9 +55,61 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
 
-      - name: Upload Windows artifact
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          echo "ISCC=C:\Program Files (x86)\Inno Setup 6\ISCC.exe" >> $env:GITHUB_ENV
+
+      - name: Build Windows Installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" build/windows/installer/installer.iss
+
+      - name: Upload Windows Installer
         uses: actions/upload-artifact@v4
         with:
-          name: Rosstabak-Windows
-          path: build/windows/x64/runner/Release/
+          name: Rosstabak-Windows-Setup
+          path: installer_output/RosstabakManager_Setup_*.exe
           retention-days: 7
+
+      - name: Compress Windows Portable
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath Rosstabak-Windows-Portable.zip
+
+      - name: Upload Windows Portable (ZIP)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rosstabak-Windows-Portable
+          path: Rosstabak-Windows-Portable.zip
+          retention-days: 7
+
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Rosstabak-macOS
+          path: artifacts/macos
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Rosstabak-Windows-Portable
+          path: artifacts/windows-portable
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Rosstabak-Windows-Setup
+          path: artifacts/windows-setup
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/macos/*
+            artifacts/windows-portable/*
+            artifacts/windows-setup/*
+          generate_release_notes: true

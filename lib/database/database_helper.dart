@@ -1,6 +1,3 @@
-import 'dart:math';
-
-import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -90,13 +87,6 @@ class DatabaseHelper {
 
       await _ensureDefaultCategories(db);
     }
-  }
-
-  String _generateSecurePassword() {
-    final random = Random.secure();
-    const chars =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    return List.generate(12, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
   Future<void> _ensureDefaultCategories(Database db) async {

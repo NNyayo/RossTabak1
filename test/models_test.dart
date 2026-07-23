@@ -86,10 +86,7 @@ void main() {
         isActive: true,
       );
 
-      final copied = original.copyWith(
-        role: AppRoles.admin,
-        isActive: false,
-      );
+      final copied = original.copyWith(role: AppRoles.admin, isActive: false);
 
       expect(copied.role, AppRoles.admin);
       expect(copied.isActive, false);

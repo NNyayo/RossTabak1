@@ -8,15 +8,7 @@ class NotificationRepository {
     final db = await _db.database;
     final map = notification.toMap();
     map['created_at'] = DateTime.now().toIso8601String();
-
-    // Если это TASK_COMPLETED, добавляем employee_name и store_name
-    if (notification.type == 'TASK_COMPLETED') {
-      map['employee_name'] =
-          notification.message
-              ?.split('выполнил задачу')[0]
-              .replaceAll('Сотрудник id=', '') ??
-          '';
-    }
+    map.remove('id');
 
     return await db.insert('notifications', map);
   }

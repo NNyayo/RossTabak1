@@ -64,6 +64,9 @@ class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
         );
         if (confirm == true && mounted) {
           await provider.signOut();
+          if (mounted) {
+            context.go(AppRoutes.login);
+          }
         }
       },
       child: SingleChildScrollView(

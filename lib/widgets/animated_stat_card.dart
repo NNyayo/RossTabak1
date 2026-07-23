@@ -65,9 +65,7 @@ class _AnimatedStatCardState extends State<AnimatedStatCard>
               color: widget.color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: widget.color.withValues(
-                  alpha: _isHovering ? 0.5 : 0.2,
-                ),
+                color: widget.color.withValues(alpha: _isHovering ? 0.5 : 0.2),
                 width: _isHovering ? 2 : 1,
               ),
               boxShadow: [
@@ -125,10 +123,7 @@ class _AnimatedStatCardState extends State<AnimatedStatCard>
                   const SizedBox(height: 4),
                   Text(
                     widget.subtitle!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
               ],

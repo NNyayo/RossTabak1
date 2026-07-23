@@ -16,7 +16,9 @@ class EmployeeRepository {
     map['updated_at'] = map['updated_at'] ?? now;
     if (map['password'] is String) {
       final password = map['password'] as String;
-      map['password'] = PasswordHasher.isHashed(password) ? password : PasswordHasher.hash(password);
+      map['password'] = PasswordHasher.isHashed(password)
+          ? password
+          : PasswordHasher.hash(password);
     }
 
     return await db.transaction<int>((txn) async {
@@ -103,7 +105,10 @@ class EmployeeRepository {
 
     return employeesData.map((data) {
       final empId = data['id'] as int;
-      return Employee.fromMap({...data, 'storeIds': storesByEmployee[empId] ?? const <int>[]});
+      return Employee.fromMap({
+        ...data,
+        'storeIds': storesByEmployee[empId] ?? const <int>[],
+      });
     }).toList();
   }
 

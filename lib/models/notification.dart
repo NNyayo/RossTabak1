@@ -30,8 +30,7 @@ class AppNotification {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = {
       'employee_id': employeeId,
       'type': type,
       'title': title,
@@ -39,6 +38,8 @@ class AppNotification {
       'is_read': isRead ? 1 : 0,
       'created_at': createdAt,
     };
+    if (id != null) map['id'] = id;
+    return map;
   }
 
   AppNotification copyWith({bool? isRead}) {

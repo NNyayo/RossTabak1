@@ -18,7 +18,7 @@ class AdminEmployeesPage extends StatefulWidget {
 
 class _AdminEmployeesPageState extends State<AdminEmployeesPage> {
   final _searchController = TextEditingController();
-  String _filterRole = 'ALL';
+  final String _filterRole = 'ALL';
 
   @override
   Widget build(BuildContext context) {

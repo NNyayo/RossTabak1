@@ -22,10 +22,7 @@ class TaskCategoryRepository {
 
   Future<List<TaskCategory>> getAllCategories() async {
     final db = await _databaseHelper.database;
-    final maps = await db.query(
-      'task_categories',
-      orderBy: 'name ASC',
-    );
+    final maps = await db.query('task_categories', orderBy: 'name ASC');
     return maps.map((map) => TaskCategory.fromMap(map)).toList();
   }
 

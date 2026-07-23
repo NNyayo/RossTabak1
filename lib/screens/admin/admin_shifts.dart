@@ -25,6 +25,49 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
   DateTime _selectedDate = DateTime.now();
   String _filterStore = 'ALL';
   String _filterType = 'ALL';
+  List<Shift> _shifts = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadShifts();
+  }
+
+  Future<void> _loadShifts() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final shifts = context.read<ShiftController>();
+      final dateString = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final day = await shifts.shiftRepository.getShiftsByDateAndType(
+        dateString,
+        AppShifts.day,
+      );
+      final night = await shifts.shiftRepository.getShiftsByDateAndType(
+        dateString,
+        AppShifts.night,
+      );
+      final result = [...day, ...night]
+        ..sort((a, b) => a.shiftType.compareTo(b.shiftType));
+      if (mounted) {
+        setState(() {
+          _shifts = result;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,11 +78,10 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
         children: [
           _buildFilters(),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
+          Row(
             children: [
-              Flexible(child: _buildDateSelector()),
+              Expanded(child: _buildDateSelector()),
+              const SizedBox(width: 12),
               SizedBox(
                 width: 160,
                 child: ElevatedButton.icon(
@@ -145,19 +187,15 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
             IconButton(
               icon: const Icon(Icons.chevron_left),
               onPressed: () {
-                setState(() {
-                  _selectedDate = _selectedDate.subtract(
-                    const Duration(days: 1),
-                  );
-                });
+                _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+                _loadShifts();
               },
             ),
             IconButton(
               icon: const Icon(Icons.chevron_right),
               onPressed: () {
-                setState(() {
-                  _selectedDate = _selectedDate.add(const Duration(days: 1));
-                });
+                _selectedDate = _selectedDate.add(const Duration(days: 1));
+                _loadShifts();
               },
             ),
           ],
@@ -167,75 +205,54 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
   }
 
   Widget _buildShiftList() {
-    return Consumer<StoreController>(
-      builder: (context, storeController, child) {
-        final shifts = context.read<ShiftController>();
-        final stores = storeController.stores;
+    final stores = context.watch<StoreController>().stores;
 
-        final dateString = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        Future<List<Shift>> loadShifts() async {
-          final allShifts = await shifts.shiftRepository.getShiftsByDateAndType(
-            dateString,
-            AppShifts.day,
-          );
-          final nightShifts = await shifts.shiftRepository
-              .getShiftsByDateAndType(dateString, AppShifts.night);
-          return [...allShifts, ...nightShifts]
-            ..sort((a, b) => a.shiftType.compareTo(b.shiftType));
-        }
+    if (_error != null) {
+      return Center(child: Text('Ошибка: $_error'));
+    }
 
-        return FutureBuilder<List<Shift>>(
-          future: loadShifts(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+    var shifts = _shifts;
 
-            final allShifts = snapshot.data ?? [];
+    if (_filterStore != 'ALL') {
+      final storeId = int.parse(_filterStore);
+      shifts = shifts.where((s) => s.storeId == storeId).toList();
+    }
 
-            var shifts = allShifts;
+    if (_filterType != 'ALL') {
+      shifts = shifts.where((s) => s.shiftType == _filterType).toList();
+    }
 
-            if (_filterStore != 'ALL') {
-              final storeId = int.parse(_filterStore);
-              shifts = shifts.where((s) => s.storeId == storeId).toList();
-            }
+    if (shifts.isEmpty) {
+      return const Center(child: Text('Смены не найдены на эту дату'));
+    }
 
-            if (_filterType != 'ALL') {
-              shifts = shifts.where((s) => s.shiftType == _filterType).toList();
-            }
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: shifts.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final shift = shifts[index];
+        final store = stores.firstWhere(
+          (s) => s.id == shift.storeId,
+          orElse: () => Store(
+            id: shift.storeId,
+            name: 'Unknown',
+            address: '',
+            metro: '',
+            markerColor: 'Белый',
+            isActive: true,
+          ),
+        );
 
-            if (shifts.isEmpty) {
-              return const Center(child: Text('Смены не найдены на эту дату'));
-            }
-
-            return ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: shifts.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final shift = shifts[index];
-                final store = stores.firstWhere(
-                  (s) => s.id == shift.storeId,
-                  orElse: () => Store(
-                    id: shift.storeId,
-                    name: 'Unknown',
-                    address: '',
-                    metro: '',
-                    markerColor: 'Белый',
-                    isActive: true,
-                  ),
-                );
-
-                return ShiftCard(
-                  shift: shift,
-                  storeName: store.name,
-                  onAssignEmployees: () => _assignEmployees(context, shift),
-                  onDelete: () => _deleteShift(context, shift),
-                );
-              },
-            );
-          },
+        return ShiftCard(
+          shift: shift,
+          storeName: store.name,
+          onAssignEmployees: () => _assignEmployees(context, shift),
+          onDelete: () => _deleteShift(context, shift),
         );
       },
     );
@@ -263,7 +280,7 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
         );
       }
     }
-    setState(() {});
+    _loadShifts();
     if (mounted) {
       ScaffoldMessenger.of(
         context,
@@ -293,7 +310,7 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
         );
       }
     }
-    setState(() {});
+    _loadShifts();
     if (mounted) {
       ScaffoldMessenger.of(
         context,
@@ -332,7 +349,9 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
           context.read<AuthProvider>().currentEmployee?.id ?? 1;
       await controller.assignEmployees(shift.id!, toAssign, currentUserId);
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _loadShifts();
+        });
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Сотрудники назначены')));
@@ -363,7 +382,9 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
       final controller = context.read<ShiftController>();
       await controller.shiftRepository.deleteShift(shift.id!);
       await controller.shiftEmployeeRepository.deleteByShift(shift.id!);
-      setState(() {});
+      setState(() {
+        _loadShifts();
+      });
       if (mounted) {
         ScaffoldMessenger.of(
           context,

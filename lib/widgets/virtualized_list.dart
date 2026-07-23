@@ -25,7 +25,7 @@ class VirtualizedList extends StatefulWidget {
 }
 
 class _VirtualizedListState extends State<VirtualizedList> {
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
   int _visibleStart = 0;
   int _visibleEnd = 0;
   final double _buffer = 5; // Extra items to render above/below viewport

@@ -64,9 +64,7 @@ class EmployeeProfileScreen extends StatelessWidget {
                               ),
                               Text(
                                 employee.login,
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                ),
+                                style: TextStyle(color: Colors.grey[600]),
                               ),
                             ],
                           ),
@@ -102,7 +100,9 @@ class EmployeeProfileScreen extends StatelessWidget {
                           : Icons.cancel,
                       label: 'Статус',
                       value: employee.isActive ? 'Активен' : 'Уволен',
-                      valueColor: employee.isActive ? Colors.green : Colors.grey,
+                      valueColor: employee.isActive
+                          ? Colors.green
+                          : Colors.grey,
                     ),
                   ],
                 ),

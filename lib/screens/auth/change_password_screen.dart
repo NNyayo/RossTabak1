@@ -85,7 +85,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final employeeController = context.read<EmployeeController>();
 
     final employee = await employeeController.getEmployeeById(employeeId);
-    if (employee == null || !PasswordHasher.verify(currentPasswordController.text.trim(), employee.password)) {
+    if (employee == null ||
+        !PasswordHasher.verify(
+          currentPasswordController.text.trim(),
+          employee.password,
+        )) {
       setState(() => _currentError = 'Неверный текущий пароль');
       return;
     }
@@ -98,9 +102,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Пароль успешно изменён')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Пароль успешно изменён')));
 
       Navigator.pop(context);
     } catch (e) {
@@ -153,9 +157,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureCurrent
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                      _obscureCurrent ? Icons.visibility_off : Icons.visibility,
                     ),
                     onPressed: () =>
                         setState(() => _obscureCurrent = !_obscureCurrent),
@@ -182,8 +184,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   icon: Icon(
                     _obscureNew ? Icons.visibility_off : Icons.visibility,
                   ),
-                  onPressed: () =>
-                      setState(() => _obscureNew = !_obscureNew),
+                  onPressed: () => setState(() => _obscureNew = !_obscureNew),
                 ),
               ),
             ),
@@ -204,21 +205,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscureConfirm
-                        ? Icons.visibility_off
-                        : Icons.visibility,
+                    _obscureConfirm ? Icons.visibility_off : Icons.visibility,
                   ),
-                  onPressed: () => setState(
-                    () => _obscureConfirm = !_obscureConfirm,
-                  ),
+                  onPressed: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
             ),
             const SizedBox(height: 30),
-            AppButton(
-              text: 'Сохранить',
-              onPressed: _submit,
-            ),
+            AppButton(text: 'Сохранить', onPressed: _submit),
           ],
         ),
       ),
