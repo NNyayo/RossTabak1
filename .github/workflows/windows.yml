@@ -1,29 +1,55 @@
-name: Build Windows
+name: Build Windows Installer
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - name: Download project
+
+      # Получаем код
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Flutter
+
+      # Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.6'
 
-      - name: Install packages
+
+      # Зависимости
+      - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build exe
+
+      # Сборка Windows
+      - name: Build Windows Release
         run: flutter build windows --release
 
-      - name: Upload exe
+
+      # Установка Inno Setup
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+
+
+      # Создание установщика
+      - name: Build Installer
+        run: |
+          iscc installer/RosTabak.iss
+
+
+      # Загружаем готовый Setup.exe
+      - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
-          name: RosTabak-Windows
-          path: build/windows/x64/runner/Release
+          name: RosTabak-Setup
+          path: installer/output/RosTabak-Setup.exe
+        
