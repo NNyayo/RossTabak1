@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../app/routes.dart';
 import '../../controllers/employee_controller.dart';
 import '../../models/employee.dart';
 import '../../providers/auth_provider.dart';
@@ -56,17 +54,297 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildProfileCard(),
+          _buildAppInfoCard(),
+          const SizedBox(height: 16),
+          _buildProfileCard(),
+          const SizedBox(height: 16),
+          _buildPasswordCard(),
+          const SizedBox(height: 16),
+          _buildBackupCard(),
+        ],
+      ),
+      ),
+    );
+  }
+
+  Widget _buildAppInfoCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'О приложении',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.business_center,
+                    size: 32,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'RossTabak Manager',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                         'Версия 1.0.1',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Сборка 2026.07.26',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
-            _buildPasswordCard(),
-            const SizedBox(height: 16),
-            _buildBackupCard(),
-            const SizedBox(height: 16),
-            _buildSystemCard(),
+            ElevatedButton.icon(
+              onPressed: () => _showAboutDialog(context),
+              icon: const Icon(Icons.info_outline),
+              label: const Text('О программе'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                foregroundColor: Colors.blue,
+              ),
+            ),
+            const Divider(height: 32),
+            Consumer<ThemeProvider>(
+              builder: (context, themeProvider, _) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _ThemeOption(
+                      icon: Icons.light_mode,
+                      label: 'Светлая',
+                      isSelected: !themeProvider.isDarkMode,
+                      onTap: () {
+                        if (themeProvider.isDarkMode) {
+                          themeProvider.toggleTheme();
+                        }
+                      },
+                    ),
+                    _ThemeOption(
+                      icon: Icons.dark_mode,
+                      label: 'Тёмная',
+                      isSelected: themeProvider.isDarkMode,
+                      onTap: () {
+                        if (!themeProvider.isDarkMode) {
+                          themeProvider.toggleTheme();
+                        }
+                      },
+                    ),
+                    _ThemeOption(
+                      icon: Icons.auto_mode,
+                      label: 'Системная',
+                      isSelected: false,
+                      onTap: () {},
+                    ),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _showAboutDialog(BuildContext context) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('О приложении'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.business_center,
+                    size: 40,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'RossTabak Manager',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                         'Версия 1.0.1',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+            const Text(
+              'Управление задачами и сотрудниками',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Дата сборки: 26.07.2026',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Разработчик: YAYO',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackupCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Резервное копирование',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _createBackup,
+              icon: const Icon(Icons.backup),
+              label: const Text('Создать резервную копию'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _restoreBackup,
+              icon: const Icon(Icons.restore),
+              label: const Text('Восстановить из копии'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _createBackup() async {
+    try {
+      final path = await BackupService.instance.createBackup();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Резервная копия создана: $path')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _restoreBackup() async {
+    try {
+      final backups = await BackupService.instance.listBackups();
+      if (backups.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Нет резервных копий')));
+        }
+        return;
+      }
+
+      final selected = await showDialog<String>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Восстановить из копии'),
+          content: SizedBox(
+            width: 400,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: backups.length,
+              itemBuilder: (_, i) {
+                final name = backups[i].split('/').last;
+                return ListTile(
+                  title: Text(name),
+                  onTap: () => Navigator.pop(context, backups[i]),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      if (selected != null && mounted) {
+        await BackupService.instance.restoreFromFile(selected);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('База восстановлена. Перезапустите приложение.'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildProfileCard() {
@@ -245,173 +523,57 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+}
 
-  Widget _buildSystemCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Системные настройки',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Consumer<ThemeProvider>(
-              builder: (context, themeProvider, _) {
-                return SwitchListTile(
-                  title: const Text('Тёмная тема'),
-                  subtitle: Text(
-                    themeProvider.isDarkMode ? 'Включена' : 'Выключена',
-                  ),
-                  value: themeProvider.isDarkMode,
-                  onChanged: (_) {
-                    themeProvider.toggleTheme();
-                  },
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Выйти из аккаунта'),
-              onTap: _logout,
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.info),
-              title: const Text('О приложении'),
-              subtitle: const Text('RossTabak Manager v1.0.0'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+class _ThemeOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
 
-  Widget _buildBackupCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Резервное копирование',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _createBackup,
-              icon: const Icon(Icons.backup),
-              label: const Text('Создать резервную копию'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: _restoreBackup,
-              icon: const Icon(Icons.restore),
-              label: const Text('Восстановить из копии'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  const _ThemeOption({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
 
-  Future<void> _createBackup() async {
-    try {
-      final path = await BackupService.instance.createBackup();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Резервная копия создана: $path')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  Future<void> _restoreBackup() async {
-    try {
-      final backups = await BackupService.instance.listBackups();
-      if (backups.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Нет резервных копий')));
-        }
-        return;
-      }
-
-      final selected = await showDialog<String>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Восстановить из копии'),
-          content: SizedBox(
-            width: 400,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: backups.length,
-              itemBuilder: (_, i) {
-                final name = backups[i].split('/').last;
-                return ListTile(
-                  title: Text(name),
-                  onTap: () => Navigator.pop(context, backups[i]),
-                );
-              },
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.blue.withValues(alpha: 0.15)
+                  : Colors.grey.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? Colors.blue : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: isSelected ? Colors.blue : Colors.grey[600],
+              size: 24,
             ),
           ),
-        ),
-      );
-
-      if (selected != null && mounted) {
-        await BackupService.instance.restoreFromFile(selected);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('База восстановлена. Перезапустите приложение.'),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: isSelected ? Colors.blue : Colors.grey[600],
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  Future<void> _logout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Выйти'),
-        content: const Text('Вы уверены, что хотите выйти?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Выйти'),
           ),
         ],
       ),
     );
-
-    if (confirm == true && mounted) {
-      await context.read<AuthProvider>().signOut();
-      if (mounted) {
-        context.go(AppRoutes.login);
-      }
-    }
   }
 }

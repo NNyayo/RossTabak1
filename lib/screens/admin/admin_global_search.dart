@@ -52,12 +52,10 @@ class _AdminGlobalSearchPageState extends State<AdminGlobalSearchPage> {
           ),
           const SizedBox(height: 16),
           if (_searchCtrl.text.trim().length >= 2)
-            Expanded(child: _buildResults(_searchCtrl.text.trim()))
+            _buildResults(_searchCtrl.text.trim())
           else
-            const Expanded(
-              child: Center(
-                child: Text('Введите минимум 2 символа для поиска'),
-              ),
+            Center(
+              child: Text('Введите минимум 2 символа для поиска'),
             ),
         ],
       ),
@@ -83,6 +81,8 @@ class _AdminGlobalSearchPageState extends State<AdminGlobalSearchPage> {
     }).toList();
 
     return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       children: [
         if (employees.isNotEmpty) ...[
           _buildSectionHeader('Сотрудники', employees.length),

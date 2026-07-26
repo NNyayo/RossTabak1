@@ -19,8 +19,7 @@ class ViolationRepository {
   }) async {
     final db = await _databaseHelper.database;
     final data = {
-      if (employeeId != null)
-        'employee_id': employeeId, // ignore: use_null_aware_elements
+      'employee_id': ?employeeId, // ignore: use_null_aware_elements
       'task_id': taskId,
       'type': type,
       'description': description,

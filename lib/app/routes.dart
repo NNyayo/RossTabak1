@@ -8,10 +8,14 @@ class AppRoutes {
   static const String adminNotifications = '/admin/notifications';
   static const String adminSearch = '/admin/search';
   static const String adminTasks = '/admin/tasks';
+  static const String adminDailyTasks = '/admin/daily-tasks';
+  static const String adminRequests = '/admin/requests';
   static const String adminTasksStats = '/admin/tasks-stats';
   static const String adminStatistics = '/admin/statistics';
   static const String settings = '/settings';
   static const String employee = '/employee';
   static const String employeeTasks = '/employee/tasks';
+  static const String employeeDailyTasks = '/employee/daily-tasks';
+  static const String employeeRequests = '/employee/requests';
   static const String employeeProfile = '/employee/profile';
 }

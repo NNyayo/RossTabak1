@@ -1,5 +1,5 @@
 class AppConstants {
-  static const int dbVersion = 10;
+  static const int dbVersion = 12;
   static const String dbName = 'rosstabak.db';
 
   static const String adminLogin = 'admin';

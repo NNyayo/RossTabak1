@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -21,6 +22,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final passwordController = TextEditingController();
   bool _isHoveringForgot = false;
   bool _obscurePassword = true;
+
+  // Ограничитель: только английский, цифры и спецсимволы
+  final _asciiInputFormatter = FilteringTextInputFormatter.allow(
+    RegExp(r'''[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};'\|,.<>\/?`~ ]'''),
+  );
 
   Future<void> _submit() async {
     final provider = context.read<AuthProvider>();
@@ -114,12 +120,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         AppTextField(
                           controller: loginController,
                           label: 'Логин',
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[a-zA-Z0-9_.@-]'),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         AppTextField(
                           controller: passwordController,
                           label: 'Пароль',
                           obscureText: _obscurePassword,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(
+                                r'''[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};'\|,.<>\/?`~ ]''',
+                              ),
+                            ),
+                          ],
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword

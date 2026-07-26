@@ -8,6 +8,8 @@ import '../../models/task.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/animated_list_items.dart';
 import 'employee_base_page.dart';
+import 'daily_tasks/daily_tasks_screen.dart';
+import 'requests/my_requests_screen.dart';
 
 class EmployeeDashboardPage extends StatefulWidget {
   const EmployeeDashboardPage({super.key});
@@ -17,6 +19,8 @@ class EmployeeDashboardPage extends StatefulWidget {
 }
 
 class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
+  int _selectedTab = 0;
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AuthProvider>();
@@ -31,11 +35,6 @@ class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
     final taskController = context.watch<TaskController>();
 
     final allTasks = taskController.tasks;
-    final totalTasks = allTasks.length;
-    final completedTasks = allTasks
-        .where((t) => t.status == 'COMPLETED')
-        .length;
-    final remainingTasks = totalTasks - completedTasks;
     // Показываем только невыполненные задачи
     final myTasks = allTasks
         .where((t) => t.status != 'COMPLETED')
@@ -69,29 +68,106 @@ class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
           }
         }
       },
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(employee),
-            const SizedBox(height: 16),
-            _buildStatsCard(totalTasks, completedTasks, remainingTasks),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: Text(
-                'Мои задачи',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+      child: Column(
+        children: [
+          // Табы для переключения между разделами
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _TabButton(
+                      icon: Icons.calendar_today,
+                      label: 'Ежедн.',
+                      isSelected: _selectedTab == 0,
+                      onTap: () => setState(() => _selectedTab = 0),
+                    ),
+                  ),
+                  Expanded(
+                    child: _TabButton(
+                      icon: Icons.task,
+                      label: 'Задачи',
+                      isSelected: _selectedTab == 1,
+                      onTap: () => setState(() => _selectedTab = 1),
+                    ),
+                  ),
+                  Expanded(
+                    child: _TabButton(
+                      icon: Icons.description,
+                      label: 'Заявки',
+                      isSelected: _selectedTab == 2,
+                      onTap: () => setState(() => _selectedTab = 2),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            _buildMyTasksList(myTasks),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          // Контент в зависимости от выбранного таба
+          Expanded(
+            child: IndexedStack(
+              index: _selectedTab,
+              children: [
+                // 1. Обязательные ежедневные задачи
+                _buildDailyTasksTab(),
+                // 2. Обычные задачи (существующий функционал)
+                _buildRegularTasksTab(context, employee, myTasks),
+                // 3. Мои заявки
+                const MyRequestsScreen(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDailyTasksTab() {
+    return const DailyTasksScreen();
+  }
+
+  Widget _buildRegularTasksTab(
+    BuildContext context,
+    dynamic employee,
+    List<Task> myTasks,
+  ) {
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(employee),
+          const SizedBox(height: 16),
+          _buildStatsCard(
+            context.watch<TaskController>().tasks.length,
+            context
+                .watch<TaskController>()
+                .tasks
+                .where((t) => t.status == 'COMPLETED')
+                .length,
+            context
+                .watch<TaskController>()
+                .tasks
+                .where((t) => t.status != 'COMPLETED')
+                .length,
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              'Дополнительные задачи',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildMyTasksList(myTasks),
+        ],
       ),
     );
   }
@@ -259,6 +335,54 @@ class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
               label: 'Осталось',
               value: remaining.toString(),
               color: Colors.orange,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TabButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _TabButton({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.grey[200] : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? Colors.grey[800] : Colors.grey,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? Colors.grey[800] : Colors.grey[700],
+              ),
             ),
           ],
         ),

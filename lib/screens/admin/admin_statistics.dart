@@ -35,23 +35,14 @@ class _AdminStatisticsPageState extends State<AdminStatisticsPage> {
           const SizedBox(height: 16),
           _buildPeriodFilter(),
           const SizedBox(height: 16),
-          Expanded(
-            child: IndexedStack(
-              index: _selectedTab == 'general'
-                  ? 0
-                  : _selectedTab == 'employees'
-                  ? 1
-                  : _selectedTab == 'stores'
-                  ? 2
-                  : 3,
-              children: [
-                _ScrollableChild(child: _buildGeneralStats()),
-                _ScrollableChild(child: _buildEmployeeStats()),
-                _ScrollableChild(child: _buildStoreStats()),
-                _ScrollableChild(child: _buildShiftStats()),
-              ],
-            ),
-          ),
+          if (_selectedTab == 'general')
+            _ScrollableChild(child: _buildGeneralStats())
+          else if (_selectedTab == 'employees')
+            _ScrollableChild(child: _buildEmployeeStats())
+          else if (_selectedTab == 'stores')
+            _ScrollableChild(child: _buildStoreStats())
+          else
+            _ScrollableChild(child: _buildShiftStats()),
         ],
       ),
     );
@@ -684,8 +675,8 @@ class _ScrollableChild extends StatelessWidget {
 
 Color _getRoleColor(String role) {
   switch (role) {
-    case 'ADMIN':
-      return Colors.purple;
+      case 'ADMIN':
+        return Colors.grey;
     case 'MANAGER':
       return Colors.blue;
     default:

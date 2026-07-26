@@ -13,6 +13,8 @@ import 'migrations/migration_007_add_store_id_to_tasks.dart';
 import 'migrations/migration_008_add_is_active_to_tasks.dart';
 import 'migrations/migration_009_add_task_comments.dart';
 import 'migrations/migration_010_add_notifications.dart';
+import 'migrations/migration_011_add_daily_tasks_and_requests.dart';
+import 'migrations/migration_012_add_store_id_to_daily_tasks.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -166,6 +168,14 @@ class DatabaseHelper {
     for (final query in tenthStageMigrations) {
       await db.execute(query);
     }
+
+    for (final query in eleventhStageMigrations) {
+      await db.execute(query);
+    }
+
+    for (final query in twelfthStageMigrations) {
+      await db.execute(query);
+    }
   }
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
@@ -213,6 +223,18 @@ class DatabaseHelper {
 
     if (oldVersion < 10) {
       for (final query in tenthStageMigrations) {
+        await db.execute(query);
+      }
+    }
+
+    if (oldVersion < 11) {
+      for (final query in eleventhStageMigrations) {
+        await db.execute(query);
+      }
+    }
+
+    if (oldVersion < 12) {
+      for (final query in twelfthStageMigrations) {
         await db.execute(query);
       }
     }

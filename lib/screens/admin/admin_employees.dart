@@ -29,7 +29,7 @@ class _AdminEmployeesPageState extends State<AdminEmployeesPage> {
         children: [
           _buildFilters(),
           const SizedBox(height: 12),
-          Expanded(child: _buildEmployeeList()),
+          _buildEmployeeList(),
         ],
       ),
     );
@@ -101,6 +101,8 @@ class _AdminEmployeesPageState extends State<AdminEmployeesPage> {
         }
 
         return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(vertical: 8),
           itemCount: employees.length,
           separatorBuilder: (_, _) => const SizedBox(height: 8),
@@ -422,7 +424,7 @@ class _EmployeeCardState extends State<_EmployeeCard>
   Color _getRoleColor(String role) {
     switch (role) {
       case 'ADMIN':
-        return Colors.purple;
+        return Colors.grey;
       case 'MANAGER':
         return Colors.blue;
       default:

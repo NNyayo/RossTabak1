@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../app/routes.dart';
 import '../../constants/app_task_status.dart';
 import '../../controllers/employee_controller.dart';
+import '../../controllers/employee_request_controller.dart';
 import '../../controllers/store_controller.dart';
 import '../../controllers/task_category_controller.dart';
 import '../../controllers/task_controller.dart';
@@ -77,23 +81,92 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
     return AdminBasePage(
       selectedRoute: '/admin/tasks',
       title: 'Задачи',
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildCreateTaskCard(),
-            const SizedBox(height: 12),
-            _buildFilters(),
-            const SizedBox(height: 12),
-            _buildTaskList(),
-          ],
-        ),
+      child: Column(
+        children: [
+          _buildRequestsButton(context),
+          const SizedBox(height: 12),
+          _buildCreateTaskCard(),
+          const SizedBox(height: 12),
+          _buildFilters(),
+          const SizedBox(height: 12),
+          _buildTaskList(),
+        ],
       ),
+    );
+  }
+
+  Widget _buildRequestsButton(BuildContext context) {
+    return Consumer<EmployeeRequestController>(
+      builder: (context, controller, _) {
+        final unread = controller.newRequestsCount;
+        return InkWell(
+          onTap: () => context.push(AppRoutes.adminRequests),
+          borderRadius: BorderRadius.circular(12),
+          child: Card(
+            elevation: 2,
+            color: unread > 0 ? Colors.blue.withValues(alpha: 0.08) : null,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.description_outlined,
+                    color: Colors.blue,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Заявки сотрудников',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Просмотр и управление заявками от сотрудников',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (unread > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        unread.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildCreateTaskCard() {
     return Card(
-      child: SingleChildScrollView(
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -139,7 +212,6 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // 6. Звездочка "Обязательно к выполнению" вместо приоритета
                 Expanded(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -183,6 +255,10 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.datetime,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                _DeadlineFormatter(),
+              ],
             ),
             const SizedBox(height: 12),
             AppButton(text: 'Создать задачу', onPressed: _createTask),
@@ -448,6 +524,57 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
   }
 }
 
+/// Кастомный форматтер для даты dd.mm.yyyy
+class _DeadlineFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Получаем только цифры из нового значения
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+
+    // Ограничиваем 8 цифрами (ddmmyyyy)
+    final trimmed = digits.length > 8 ? digits.substring(0, 8) : digits;
+
+    if (trimmed.isEmpty) return TextEditingValue.empty;
+
+    // Формируем строку с точками
+    String result = '';
+    for (int i = 0; i < trimmed.length; i++) {
+      if (i == 2 || i == 4) result += '.';
+      result += trimmed[i];
+    }
+
+    // Проверяем дату, если ввели все 8 цифр
+    if (trimmed.length == 8) {
+      final dateStr = result;
+      if (!_isValidDate(dateStr)) return oldValue;
+    }
+
+    return TextEditingValue(
+      text: result,
+      selection: TextSelection.collapsed(offset: result.length),
+    );
+  }
+
+  bool _isValidDate(String dateStr) {
+    if (dateStr.length != 10) return true;
+    try {
+      final parts = dateStr.split('.');
+      if (parts.length != 3) return true;
+      final day = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final year = int.tryParse(parts[2]);
+      if (day == null || month == null || year == null) return true;
+      final date = DateTime(year, month, day);
+      return !date.isAfter(DateTime.now());
+    } catch (_) {
+      return true;
+    }
+  }
+}
+
 // Виджет звездочки с анимацией
 class _StarToggle extends StatefulWidget {
   final bool isImportant;
@@ -651,7 +778,6 @@ class TaskCard extends StatelessWidget {
 
   String _formatDeadline(String? deadline) {
     if (deadline == null || deadline.isEmpty) return '';
-    // Преобразуем yyyy-MM-dd в dd.mm.yyyy
     final parts = deadline.split('-');
     if (parts.length == 3) {
       return '${parts[2]}.${parts[1]}.${parts[0]}';

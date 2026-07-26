@@ -59,6 +59,10 @@ class TaskRepository {
 
   Future<void> hardDeleteTask(int id) async {
     final db = await _databaseHelper.database;
+    // Сначала удаляем связанные записи из task_employees и task_logs
+    await db.delete('task_employees', where: 'task_id = ?', whereArgs: [id]);
+    await db.delete('task_logs', where: 'task_id = ?', whereArgs: [id]);
+    // Затем удаляем саму задачу
     await db.delete('tasks', where: 'id = ?', whereArgs: [id]);
   }
 

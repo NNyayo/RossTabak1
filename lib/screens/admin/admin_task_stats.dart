@@ -228,7 +228,7 @@ class _AdminTaskStatsPageState extends State<AdminTaskStatsPage> {
               newTasks,
             ),
             const SizedBox(height: 12),
-            Expanded(child: _buildTaskList(tasks)),
+            _buildTaskList(tasks),
           ],
         );
       },
@@ -290,6 +290,8 @@ class _AdminTaskStatsPageState extends State<AdminTaskStatsPage> {
     }
 
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: tasks.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),

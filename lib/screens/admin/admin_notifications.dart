@@ -47,31 +47,34 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
             ],
           ),
           const SizedBox(height: 8),
-          Expanded(
-            child: Consumer<NotificationController>(
-              builder: (context, controller, child) {
-                if (controller.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (controller.notifications.isEmpty) {
-                  return const Center(child: Text('Нет уведомлений'));
-                }
-                return ListView.separated(
-                  itemCount: controller.notifications.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
-                  itemBuilder: (context, index) {
-                    final notification = controller.notifications[index];
-                    return _NotificationCard(
-                      notification: notification,
-                      onTap: () => controller.markAsRead(notification.id!),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
+          _buildNotificationList(),
         ],
       ),
+    );
+  }
+  Widget _buildNotificationList() {
+    return Consumer<NotificationController>(
+      builder: (context, controller, child) {
+        if (controller.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (controller.notifications.isEmpty) {
+          return const Center(child: Text('Нет уведомлений'));
+        }
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: controller.notifications.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 4),
+          itemBuilder: (context, index) {
+            final notification = controller.notifications[index];
+            return _NotificationCard(
+              notification: notification,
+              onTap: () => controller.markAsRead(notification.id!),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import '../app/routes.dart';
 import '../app/theme.dart';
 import '../constants/app_roles.dart';
+import '../controllers/daily_task_controller.dart';
 import '../controllers/employee_controller.dart';
+import '../controllers/employee_request_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../controllers/shift_controller.dart';
 import '../controllers/store_controller.dart';
@@ -25,7 +27,10 @@ import '../screens/admin/admin_stores.dart';
 import '../screens/admin/admin_task_stats.dart';
 import '../screens/admin/admin_tasks.dart';
 import '../screens/admin/admin_statistics.dart';
+import '../screens/admin/daily_tasks/admin_daily_task_templates.dart';
+import '../screens/admin/requests/admin_requests_page.dart';
 
+import '../repositories/task_repository.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/employee/employee_dashboard.dart';
 import '../screens/employee/tasks/my_tasks_screen.dart';
@@ -130,6 +135,16 @@ final _router = GoRouter(
           _FadeSlidePage(child: const AdminTasksPage()),
     ),
     GoRoute(
+      path: AppRoutes.adminDailyTasks,
+      pageBuilder: (context, state) =>
+          _FadeSlidePage(child: const AdminDailyTaskTemplatesPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.adminRequests,
+      pageBuilder: (context, state) =>
+          _FadeSlidePage(child: const AdminRequestsPage()),
+    ),
+    GoRoute(
       path: AppRoutes.adminTasksStats,
       pageBuilder: (context, state) =>
           _FadeSlidePage(child: const AdminTaskStatsPage()),
@@ -188,6 +203,7 @@ class RossTabakApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        Provider(create: (_) => TaskRepository()),
         ChangeNotifierProvider(create: (_) => StoreController()..loadStores()),
         ChangeNotifierProvider(
           create: (_) => EmployeeController()..loadEmployees(),
@@ -201,6 +217,10 @@ class RossTabakApp extends StatelessWidget {
           create: (_) => SystemLogController()..loadLogs(),
         ),
         ChangeNotifierProvider(create: (_) => NotificationController()),
+        ChangeNotifierProvider(
+          create: (_) => DailyTaskController()..loadTemplates(),
+        ),
+        ChangeNotifierProvider(create: (_) => EmployeeRequestController()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

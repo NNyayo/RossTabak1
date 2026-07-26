@@ -36,6 +36,8 @@ class _AdminViolationsPageState extends State<AdminViolationsPage> {
           }
 
           return ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: controller.violations.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),

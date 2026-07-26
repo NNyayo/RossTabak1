@@ -37,6 +37,8 @@ class _AdminHistoryPageState extends State<AdminHistoryPage> {
           }
 
           return ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: controller.logs.length,
             separatorBuilder: (_, __) => const SizedBox(height: 4),
