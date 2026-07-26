@@ -19,26 +19,24 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
-        working-directory: relese/Code
 
       - name: Build Windows release
         run: flutter build windows --release
-        working-directory: relese/Code
 
       - name: Download VC++ Redistributable
         run: |
-          curl -L -o vc_redist.x64.exe "https://aka.ms/vs/17/release/vc_redist.x64.exe"
-        working-directory: relese/Code/installer
+          curl.exe -L -o vc_redist.x64.exe "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        working-directory: installer
 
       - name: Install Inno Setup
         run: choco install innosetup -y
 
       - name: Build installer
         run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" RosTabak.iss'
-        working-directory: relese/Code/installer
+        working-directory: installer
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: RosTabak-Setup
-          path: relese/Code/installer/output/RosTabak-Setup.exe
+          path: installer/output/RosTabak-Setup.exe
