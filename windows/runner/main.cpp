@@ -9,125 +9,17 @@
 #include <filesystem>
 #include <dbghelp.h>
 #include <signal.h>
+#include <iomanip>
 
 #include "flutter_window.h"
 #include "utils.h"
 
 namespace fs = std::filesystem;
 
-// -------------------------------------------------------------------
-// Global exception handler for uncatchable crashes
-// -------------------------------------------------------------------
-
 #pragma comment(lib, "dbghelp.lib")
 
-/// Writes a crash dump to logs/crash.dmp next to the executable.
-static void WriteMiniDump(EXCEPTION_POINTERS* exceptionPointers) {
-  try {
-    std::wstring exeDir = GetExeDir();
-    std::wstring logDir = exeDir + L"\\logs";
-    fs::create_directories(logDir);
-
-    std::wstring dumpFile = logDir + L"\\crash.dmp";
-    HANDLE hFile = CreateFileW(
-      dumpFile.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
-      FILE_ATTRIBUTE_NORMAL, nullptr
-    );
-    if (hFile != INVALID_HANDLE_VALUE) {
-      MINIDUMP_EXCEPTION_INFORMATION mei;
-      mei.ThreadId = GetCurrentThreadId();
-      mei.ExceptionPointers = exceptionPointers;
-      mei.ClientPointers = FALSE;
-
-      MiniDumpWriteDump(
-        GetCurrentProcess(), GetCurrentProcessId(), hFile,
-        MiniDumpWithDataSegs, &mei, nullptr, nullptr
-      );
-      CloseHandle(hFile);
-    }
-  } catch (...) {
-    // Ignore
-  }
-}
-
-/// Global unhandled exception filter (catches crashes like access violation).
-static LONG WINAPI GlobalExceptionHandler(EXCEPTION_POINTERS* exceptionInfo) {
-  DWORD code = exceptionInfo->ExceptionRecord->ExceptionCode;
-
-  // Write to log
-  WriteStartupLog("=== UNHANDLED EXCEPTION ===");
-  WriteStartupLog("ExceptionCode: 0x" + std::to_string(code));
-
-  // Decode common codes
-  switch (code) {
-    case EXCEPTION_ACCESS_VIOLATION:
-      WriteStartupLog("EXCEPTION_ACCESS_VIOLATION (segfault)");
-      break;
-    case EXCEPTION_ILLEGAL_INSTRUCTION:
-      WriteStartupLog("EXCEPTION_ILLEGAL_INSTRUCTION");
-      break;
-    case EXCEPTION_STACK_OVERFLOW:
-      WriteStartupLog("EXCEPTION_STACK_OVERFLOW");
-      break;
-    case EXCEPTION_BREAKPOINT:
-      WriteStartupLog("EXCEPTION_BREAKPOINT");
-      break;
-    case EXCEPTION_DATATYPE_MISALIGNMENT:
-      WriteStartupLog("EXCEPTION_DATATYPE_MISALIGNMENT");
-      break;
-    case EXCEPTION_SINGLE_STEP:
-      WriteStartupLog("EXCEPTION_SINGLE_STEP");
-      break;
-    case EXCEPTION_PRIV_INSTRUCTION:
-      WriteStartupLog("EXCEPTION_PRIV_INSTRUCTION");
-      break;
-    case EXCEPTION_IN_PAGE_ERROR:
-      WriteStartupLog("EXCEPTION_IN_PAGE_ERROR");
-      break;
-    case EXCEPTION_NONCONTINUABLE_EXCEPTION:
-      WriteStartupLog("EXCEPTION_NONCONTINUABLE_EXCEPTION");
-      break;
-    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-      WriteStartupLog("EXCEPTION_ARRAY_BOUNDS_EXCEEDED");
-      break;
-    case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-      WriteStartupLog("EXCEPTION_FLT_DIVIDE_BY_ZERO");
-      break;
-    case EXCEPTION_INT_DIVIDE_BY_ZERO:
-      WriteStartupLog("EXCEPTION_INT_DIVIDE_BY_ZERO");
-      break;
-    case EXCEPTION_FLT_OVERFLOW:
-      WriteStartupLog("EXCEPTION_FLT_OVERFLOW");
-      break;
-    case EXCEPTION_INT_OVERFLOW:
-      WriteStartupLog("EXCEPTION_INT_OVERFLOW");
-      break;
-    default:
-      WriteStartupLog("Unknown exception code");
-      break;
-  }
-
-  // Check for missing DLL (access violation at address 0)
-  if (code == EXCEPTION_ACCESS_VIOLATION) {
-    ULONG_PTR accessType = exceptionInfo->ExceptionRecord->ExceptionInformation[0];
-    ULONG_PTR address = exceptionInfo->ExceptionRecord->ExceptionInformation[1];
-    WriteStartupLog("Access type: " + std::string(accessType == 0 ? "READ" : "WRITE"));
-    WriteStartupLog("Fault address: 0x" + std::to_string(address));
-    if (address == 0) {
-      WriteStartupLog("-> NULL pointer dereference — likely missing DLL dependency");
-    }
-  }
-
-  // Write minidump
-  WriteMiniDump(exceptionInfo);
-
-  WriteStartupLog("=== END UNHANDLED EXCEPTION ===");
-
-  return EXCEPTION_EXECUTE_HANDLER;
-}
-
 // -------------------------------------------------------------------
-// Startup diagnostic logging (runs BEFORE Flutter engine starts)
+// Helper functions (defined BEFORE they are used)
 // -------------------------------------------------------------------
 
 /// Returns the directory where the executable is located.
@@ -181,6 +73,111 @@ static bool CanLoadDll(const std::wstring& dllName) {
 }
 
 // -------------------------------------------------------------------
+// Global exception handler for uncatchable crashes
+// -------------------------------------------------------------------
+
+/// Writes a crash dump to logs/crash.dmp next to the executable.
+static void WriteMiniDump(EXCEPTION_POINTERS* exceptionPointers) {
+  try {
+    std::wstring exeDir = GetExeDir();
+    std::wstring logDir = exeDir + L"\\logs";
+    fs::create_directories(logDir);
+
+    std::wstring dumpFile = logDir + L"\\crash.dmp";
+    HANDLE hFile = CreateFileW(
+      dumpFile.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+      FILE_ATTRIBUTE_NORMAL, nullptr
+    );
+    if (hFile != INVALID_HANDLE_VALUE) {
+      MINIDUMP_EXCEPTION_INFORMATION mei;
+      mei.ThreadId = GetCurrentThreadId();
+      mei.ExceptionPointers = exceptionPointers;
+      mei.ClientPointers = FALSE;
+
+      MiniDumpWriteDump(
+        GetCurrentProcess(), GetCurrentProcessId(), hFile,
+        MiniDumpWithDataSegs, &mei, nullptr, nullptr
+      );
+      CloseHandle(hFile);
+    }
+  } catch (...) {
+    // Ignore
+  }
+}
+
+/// Global unhandled exception filter (catches crashes like access violation).
+static LONG WINAPI GlobalExceptionHandler(EXCEPTION_POINTERS* exceptionInfo) {
+  DWORD code = exceptionInfo->ExceptionRecord->ExceptionCode;
+
+  WriteStartupLog("=== UNHANDLED EXCEPTION ===");
+  WriteStartupLog("ExceptionCode: 0x" + std::to_string(code));
+
+  switch (code) {
+    case EXCEPTION_ACCESS_VIOLATION:
+      WriteStartupLog("EXCEPTION_ACCESS_VIOLATION (segfault)");
+      break;
+    case EXCEPTION_ILLEGAL_INSTRUCTION:
+      WriteStartupLog("EXCEPTION_ILLEGAL_INSTRUCTION");
+      break;
+    case EXCEPTION_STACK_OVERFLOW:
+      WriteStartupLog("EXCEPTION_STACK_OVERFLOW");
+      break;
+    case EXCEPTION_BREAKPOINT:
+      WriteStartupLog("EXCEPTION_BREAKPOINT");
+      break;
+    case EXCEPTION_DATATYPE_MISALIGNMENT:
+      WriteStartupLog("EXCEPTION_DATATYPE_MISALIGNMENT");
+      break;
+    case EXCEPTION_SINGLE_STEP:
+      WriteStartupLog("EXCEPTION_SINGLE_STEP");
+      break;
+    case EXCEPTION_PRIV_INSTRUCTION:
+      WriteStartupLog("EXCEPTION_PRIV_INSTRUCTION");
+      break;
+    case EXCEPTION_IN_PAGE_ERROR:
+      WriteStartupLog("EXCEPTION_IN_PAGE_ERROR");
+      break;
+    case EXCEPTION_NONCONTINUABLE_EXCEPTION:
+      WriteStartupLog("EXCEPTION_NONCONTINUABLE_EXCEPTION");
+      break;
+    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+      WriteStartupLog("EXCEPTION_ARRAY_BOUNDS_EXCEEDED");
+      break;
+    case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+      WriteStartupLog("EXCEPTION_FLT_DIVIDE_BY_ZERO");
+      break;
+    case EXCEPTION_INT_DIVIDE_BY_ZERO:
+      WriteStartupLog("EXCEPTION_INT_DIVIDE_BY_ZERO");
+      break;
+    case EXCEPTION_FLT_OVERFLOW:
+      WriteStartupLog("EXCEPTION_FLT_OVERFLOW");
+      break;
+    case EXCEPTION_INT_OVERFLOW:
+      WriteStartupLog("EXCEPTION_INT_OVERFLOW");
+      break;
+    default:
+      WriteStartupLog("Unknown exception code");
+      break;
+  }
+
+  if (code == EXCEPTION_ACCESS_VIOLATION) {
+    ULONG_PTR accessType = exceptionInfo->ExceptionRecord->ExceptionInformation[0];
+    ULONG_PTR address = exceptionInfo->ExceptionRecord->ExceptionInformation[1];
+    WriteStartupLog("Access type: " + std::string(accessType == 0 ? "READ" : "WRITE"));
+    WriteStartupLog("Fault address: 0x" + std::to_string(address));
+    if (address == 0) {
+      WriteStartupLog("-> NULL pointer dereference — likely missing DLL dependency");
+    }
+  }
+
+  WriteMiniDump(exceptionInfo);
+
+  WriteStartupLog("=== END UNHANDLED EXCEPTION ===");
+
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+
+// -------------------------------------------------------------------
 // Entry point
 // -------------------------------------------------------------------
 
@@ -224,10 +221,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     } else {
       DWORD err = GetLastError();
       WriteStartupLog("flutter_windows.dll FAILED to load. GetLastError=" + std::to_string(err));
-      // Common error codes:
-      // 126 = ERROR_MOD_NOT_FOUND (missing dependency DLL)
-      // 127 = ERROR_PROC_NOT_FOUND
-      // 998 = ERROR_NOACCESS
       if (err == 126) {
         WriteStartupLog("-> ERROR_MOD_NOT_FOUND: flutter_windows.dll is missing a dependency");
         WriteStartupLog("-> Likely missing: VCRUNTIME140.dll, MSVCP140.dll, or VCRUNTIME140_1.dll");
