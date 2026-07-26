@@ -13,14 +13,19 @@ import 'app/app.dart';
 // Diagnostic logging system
 // =====================================================================
 
-/// Returns the path to the logs directory next to the executable.
+/// Returns the path to the logs directory.
+/// Uses %LOCALAPPDATA% on Windows (always writable),
+/// ~/Library/Logs on macOS, or a local 'logs' folder otherwise.
 String get _logDirectoryPath {
   if (Platform.isWindows) {
-    final exeDir = File(Platform.resolvedExecutable).parent.path;
-    return '$exeDir/logs';
+    final appData =
+        Platform.environment['LOCALAPPDATA'] ??
+        Platform.environment['APPDATA'] ??
+        '${Platform.environment['USERPROFILE']}\\AppData\\Local';
+    return '$appData\\RossTabak\\logs';
   } else if (Platform.isLinux) {
-    final exeDir = File(Platform.resolvedExecutable).parent.path;
-    return '$exeDir/logs';
+    final home = Platform.environment['HOME'] ?? '/tmp';
+    return '$home/.local/share/RossTabak/logs';
   } else if (Platform.isMacOS) {
     final home = Platform.environment['HOME'] ?? '/tmp';
     return '$home/Library/Logs/RossTabak';

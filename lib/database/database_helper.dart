@@ -1,7 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' as p;
 
 import '../constants/app_constants.dart';
 import '../constants/app_roles.dart';
@@ -25,8 +26,7 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
-  /// Writes a diagnostic message to the same log file used by main.dart.
-  /// Falls back silently if logging fails.
+  /// Writes a diagnostic message to %LOCALAPPDATA%/RossTabak/logs/rosstabak_error.log.
   static void _logToFile(String message) {
     try {
       final logDir = Directory(_getLogDirectoryPath());
@@ -43,14 +43,18 @@ class DatabaseHelper {
     }
   }
 
-  /// Returns the path to the logs directory next to the executable.
+  /// Returns the path to the logs directory.
+  /// Uses %LOCALAPPDATA% on Windows (always writable).
   static String _getLogDirectoryPath() {
     if (Platform.isWindows) {
-      final exeDir = File(Platform.resolvedExecutable).parent.path;
-      return '$exeDir/logs';
+      final appData =
+          Platform.environment['LOCALAPPDATA'] ??
+          Platform.environment['APPDATA'] ??
+          '${Platform.environment['USERPROFILE']}\\AppData\\Local';
+      return '$appData\\RossTabak\\logs';
     } else if (Platform.isLinux) {
-      final exeDir = File(Platform.resolvedExecutable).parent.path;
-      return '$exeDir/logs';
+      final home = Platform.environment['HOME'] ?? '/tmp';
+      return '$home/.local/share/RossTabak/logs';
     } else if (Platform.isMacOS) {
       final home = Platform.environment['HOME'] ?? '/tmp';
       return '$home/Library/Logs/RossTabak';
@@ -81,11 +85,32 @@ class DatabaseHelper {
 
   Future<Database> _initDB(String fileName) async {
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, fileName);
+    final path = p.join(dbPath, fileName);
+
+    // Debug output for diagnosis
+    debugPrint('DB: dbPath=$dbPath, fileName=$fileName, fullPath=$path');
+    stdout.writeln('DB: dbPath=$dbPath, fileName=$fileName, fullPath=$path');
 
     _logToFile(
       'DB: dbPath=$dbPath, fileName=$fileName, fullPath=$path, version=${AppConstants.dbVersion}',
     );
+
+    // Ensure the parent directory of the database file exists.
+    // sqflite_common_ffi does NOT create directories automatically.
+    try {
+      final dbDir = Directory(p.dirname(path));
+      if (!await dbDir.exists()) {
+        debugPrint('DB: creating directory: ${dbDir.path}');
+        stdout.writeln('DB: creating directory: ${dbDir.path}');
+        _logToFile('DB: creating directory: ${dbDir.path}');
+        await dbDir.create(recursive: true);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('DB: FAILED to create directory: $e');
+      stdout.writeln('DB: FAILED to create directory: $e');
+      _logToFile('DB: FAILED to create directory: $e\n$stackTrace');
+      rethrow;
+    }
 
     try {
       final db = await openDatabase(
@@ -125,6 +150,8 @@ class DatabaseHelper {
       _logToFile('DB: openDatabase completed successfully');
       return db;
     } catch (e, stackTrace) {
+      debugPrint('DB: openDatabase FAILED: $e');
+      stdout.writeln('DB: openDatabase FAILED: $e');
       _logToFile('DB: openDatabase FAILED: $e\n$stackTrace');
       rethrow;
     }
