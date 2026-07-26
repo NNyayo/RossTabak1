@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -23,6 +25,44 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
+  /// Writes a diagnostic message to the same log file used by main.dart.
+  /// Falls back silently if logging fails.
+  static void _logToFile(String message) {
+    try {
+      final logDir = Directory(_getLogDirectoryPath());
+      if (!logDir.existsSync()) {
+        logDir.createSync(recursive: true);
+      }
+      final file = File(_getLogFilePath());
+      file.writeAsStringSync(
+        '${DateTime.now().toIso8601String()} | $message\n',
+        mode: FileMode.append,
+      );
+    } catch (_) {
+      // Silently ignore log write failures to avoid recursion.
+    }
+  }
+
+  /// Returns the path to the logs directory next to the executable.
+  static String _getLogDirectoryPath() {
+    if (Platform.isWindows) {
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      return '$exeDir/logs';
+    } else if (Platform.isLinux) {
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      return '$exeDir/logs';
+    } else if (Platform.isMacOS) {
+      final home = Platform.environment['HOME'] ?? '/tmp';
+      return '$home/Library/Logs/RossTabak';
+    } else {
+      return 'logs';
+    }
+  }
+
+  /// Full path to the error log file.
+  static String _getLogFilePath() =>
+      '${_getLogDirectoryPath()}/rosstabak_error.log';
+
   Future<Database> get database async {
     if (_database != null) {
       return _database!;
@@ -43,82 +83,132 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, fileName);
 
-    return await openDatabase(
-      path,
-      version: AppConstants.dbVersion,
-      onConfigure: (db) async {
-        await db.execute('PRAGMA foreign_keys = ON');
-      },
-      onCreate: _createDB,
-      onUpgrade: _upgradeDB,
-      onOpen: (db) async {
-        if (await _needsEmployeeSchemaUpgrade(db)) {
-          for (final query in fifthStageMigrations) {
-            await db.execute(query);
-          }
-        }
-        await _ensureAdminExists(db);
-      },
+    _logToFile(
+      'DB: dbPath=$dbPath, fileName=$fileName, fullPath=$path, version=${AppConstants.dbVersion}',
     );
+
+    try {
+      final db = await openDatabase(
+        path,
+        version: AppConstants.dbVersion,
+        onConfigure: (db) async {
+          await db.execute('PRAGMA foreign_keys = ON');
+          _logToFile('DB: PRAGMA foreign_keys = ON executed');
+        },
+        onCreate: (db, version) async {
+          _logToFile('DB: onCreate called, version=$version');
+          await _createDB(db, version);
+          _logToFile('DB: onCreate completed');
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          _logToFile(
+            'DB: onUpgrade called, oldVersion=$oldVersion, newVersion=$newVersion',
+          );
+          await _upgradeDB(db, oldVersion, newVersion);
+          _logToFile('DB: onUpgrade completed');
+        },
+        onOpen: (db) async {
+          _logToFile('DB: onOpen called');
+          if (await _needsEmployeeSchemaUpgrade(db)) {
+            _logToFile(
+              'DB: applying fifthStageMigrations (employee schema upgrade)',
+            );
+            for (final query in fifthStageMigrations) {
+              await db.execute(query);
+            }
+            _logToFile('DB: fifthStageMigrations applied');
+          }
+          await _ensureAdminExists(db);
+          _logToFile('DB: onOpen completed');
+        },
+      );
+      _logToFile('DB: openDatabase completed successfully');
+      return db;
+    } catch (e, stackTrace) {
+      _logToFile('DB: openDatabase FAILED: $e\n$stackTrace');
+      rethrow;
+    }
   }
 
   Future<void> _ensureAdminExists(Database db) async {
-    final existingAdmin = await db.query(
-      'employees',
-      where: 'login = ? AND role = ?',
-      whereArgs: [AppConstants.adminLogin, AppRoles.admin],
-      limit: 1,
-    );
+    _logToFile('DB: _ensureAdminExists checking for admin user');
+    try {
+      final existingAdmin = await db.query(
+        'employees',
+        where: 'login = ? AND role = ?',
+        whereArgs: [AppConstants.adminLogin, AppRoles.admin],
+        limit: 1,
+      );
 
-    if (existingAdmin.isEmpty) {
-      final now = DateTime.now().toIso8601String();
-      final adminPassword = 'admin123';
+      if (existingAdmin.isEmpty) {
+        _logToFile(
+          'DB: _ensureAdminExists admin not found, creating default admin',
+        );
+        final now = DateTime.now().toIso8601String();
+        final adminPassword = 'admin123';
 
-      final adminData = {
-        'last_name': AppConstants.adminLastName,
-        'first_name': AppConstants.adminFirstName,
-        'middle_name': AppConstants.adminMiddleName,
-        'login': AppConstants.adminLogin,
-        'password': PasswordHasher.hash(adminPassword),
-        'role': AppRoles.admin,
-        'is_active': 1,
-        'created_at': now,
-      };
+        final adminData = {
+          'last_name': AppConstants.adminLastName,
+          'first_name': AppConstants.adminFirstName,
+          'middle_name': AppConstants.adminMiddleName,
+          'login': AppConstants.adminLogin,
+          'password': PasswordHasher.hash(adminPassword),
+          'role': AppRoles.admin,
+          'is_active': 1,
+          'created_at': now,
+        };
 
-      await db.insert('employees', adminData);
+        await db.insert('employees', adminData);
+        _logToFile('DB: _ensureAdminExists admin created');
 
-      await _ensureDefaultCategories(db);
+        await _ensureDefaultCategories(db);
+      } else {
+        _logToFile('DB: _ensureAdminExists admin already exists');
+      }
+    } catch (e, stackTrace) {
+      _logToFile('DB: _ensureAdminExists FAILED: $e\n$stackTrace');
+      rethrow;
     }
   }
 
   Future<void> _ensureDefaultCategories(Database db) async {
-    final existing = await db.query(
-      'task_categories',
-      where: 'name = ?',
-      whereArgs: ['Склад'],
-      limit: 1,
-    );
+    _logToFile('DB: _ensureDefaultCategories checking for default categories');
+    try {
+      final existing = await db.query(
+        'task_categories',
+        where: 'name = ?',
+        whereArgs: ['Склад'],
+        limit: 1,
+      );
 
-    if (existing.isEmpty) {
-      final categories = [
-        {'name': 'Склад', 'description': 'Задачи по работе со складом'},
-        {'name': 'Витрина', 'description': 'Задачи по работе с витриной'},
-        {'name': 'Уборка', 'description': 'Задачи по уборке'},
-        {'name': 'Инвентаризация', 'description': 'Задачи по инвентаризации'},
-        {
-          'name': 'Оборудование',
-          'description': 'Задачи по обслуживанию оборудования',
-        },
-        {'name': 'Персонал', 'description': 'Задачи по работе с персоналом'},
-      ];
+      if (existing.isEmpty) {
+        _logToFile('DB: _ensureDefaultCategories creating default categories');
+        final categories = [
+          {'name': 'Склад', 'description': 'Задачи по работе со складом'},
+          {'name': 'Витрина', 'description': 'Задачи по работе с витриной'},
+          {'name': 'Уборка', 'description': 'Задачи по уборке'},
+          {'name': 'Инвентаризация', 'description': 'Задачи по инвентаризации'},
+          {
+            'name': 'Оборудование',
+            'description': 'Задачи по обслуживанию оборудования',
+          },
+          {'name': 'Персонал', 'description': 'Задачи по работе с персоналом'},
+        ];
 
-      for (final cat in categories) {
-        await db.insert('task_categories', {
-          ...cat,
-          'is_active': 1,
-          'created_at': DateTime.now().toIso8601String(),
-        });
+        for (final cat in categories) {
+          await db.insert('task_categories', {
+            ...cat,
+            'is_active': 1,
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        }
+        _logToFile('DB: _ensureDefaultCategories completed');
+      } else {
+        _logToFile('DB: _ensureDefaultCategories categories already exist');
       }
+    } catch (e, stackTrace) {
+      _logToFile('DB: _ensureDefaultCategories FAILED: $e\n$stackTrace');
+      rethrow;
     }
   }
 

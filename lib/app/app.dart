@@ -202,7 +202,25 @@ class RossTabakApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(
+          create: (_) {
+            // Wrap AuthProvider creation in try/catch so startup errors
+            // are caught by the global error handler in main.dart
+            try {
+              return AuthProvider();
+            } catch (e, stackTrace) {
+              // Log via the global handler
+              FlutterError.reportError(
+                FlutterErrorDetails(
+                  exception: e,
+                  stack: stackTrace,
+                  context: ErrorDescription('AuthProvider creation'),
+                ),
+              );
+              rethrow;
+            }
+          },
+        ),
         Provider(create: (_) => TaskRepository()),
         ChangeNotifierProvider(create: (_) => StoreController()..loadStores()),
         ChangeNotifierProvider(

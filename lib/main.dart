@@ -9,17 +9,19 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'app/app.dart';
 
-/// Путь к директории логов рядом с исполняемым файлом.
+// =====================================================================
+// Diagnostic logging system
+// =====================================================================
+
+/// Returns the path to the logs directory next to the executable.
 String get _logDirectoryPath {
   if (Platform.isWindows) {
-    // На Windows exe лежит в папке, рядом создаём logs/
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     return '$exeDir/logs';
   } else if (Platform.isLinux) {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     return '$exeDir/logs';
   } else if (Platform.isMacOS) {
-    // На macOS — рядом с .app или в домашней директории
     final home = Platform.environment['HOME'] ?? '/tmp';
     return '$home/Library/Logs/RossTabak';
   } else {
@@ -27,10 +29,10 @@ String get _logDirectoryPath {
   }
 }
 
-/// Полный путь к файлу лога ошибок.
+/// Full path to the error log file.
 String get _logFilePath => '$_logDirectoryPath/rosstabak_error.log';
 
-/// Создаёт директорию для логов, если её нет.
+/// Ensures the logs directory exists.
 Future<void> _ensureLogDirectory() async {
   final dir = Directory(_logDirectoryPath);
   if (!await dir.exists()) {
@@ -38,7 +40,7 @@ Future<void> _ensureLogDirectory() async {
   }
 }
 
-/// Записывает сообщение в файл лога.
+/// Writes a message to the log file with a timestamp.
 Future<void> _writeToLog(String message) async {
   try {
     await _ensureLogDirectory();
@@ -48,11 +50,11 @@ Future<void> _writeToLog(String message) async {
       mode: FileMode.append,
     );
   } catch (_) {
-    // Если не удалось записать лог — игнорируем, чтобы не вызвать рекурсию.
+    // Silently ignore log write failures to avoid recursion.
   }
 }
 
-/// Форматирует ошибку и stack trace для записи в лог.
+/// Formats an error with stage, type, message, and optional stack trace.
 String _formatError({
   required String stage,
   required dynamic error,
@@ -71,8 +73,12 @@ String _formatError({
   return buffer.toString();
 }
 
+// =====================================================================
+// Main entry point
+// =====================================================================
+
 void main() async {
-  // 1. Глобальный обработчик необработанных ошибок Flutter
+  // 1. Global Flutter error handler
   FlutterError.onError = (FlutterErrorDetails details) {
     _writeToLog(
       _formatError(
@@ -83,7 +89,7 @@ void main() async {
     );
   };
 
-  // 2. Глобальный обработчик ошибок платформы (асинхронные ошибки вне зоны Flutter)
+  // 2. Global platform error handler (async errors outside Flutter zone)
   ui.PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
     _writeToLog(
       _formatError(
@@ -92,14 +98,16 @@ void main() async {
         stackTrace: stack,
       ),
     );
-    return true; // Ошибка обработана
+    return true; // Error was handled
   };
 
   try {
+    // --- Stage 1: App start ---
     await _writeToLog(
       _formatError(stage: 'AppStart', error: 'Application started'),
     );
 
+    // --- Stage 2: Flutter binding ---
     WidgetsFlutterBinding.ensureInitialized();
 
     await _writeToLog(
@@ -109,30 +117,51 @@ void main() async {
       ),
     );
 
+    // --- Stage 3: SQLite FFI initialization (Windows/Linux only) ---
     if (Platform.isWindows || Platform.isLinux) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
+      try {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
 
-      await _writeToLog(
-        _formatError(
-          stage: 'Init',
-          error: 'sqfliteFfiInit() and databaseFactory initialized',
-        ),
-      );
+        await _writeToLog(
+          _formatError(
+            stage: 'Init',
+            error:
+                'sqfliteFfiInit() and databaseFactory initialized successfully',
+          ),
+        );
+      } catch (e, stackTrace) {
+        await _writeToLog(
+          _formatError(
+            stage: 'Init.sqfliteFfiInit',
+            error: e,
+            stackTrace: stackTrace,
+          ),
+        );
+        // Don't rethrow — let the app try to start anyway
+        // (it will fail later with a clear error in the log)
+      }
     }
 
+    // --- Stage 4: Run app ---
     await _writeToLog(
       _formatError(stage: 'AppStart', error: 'Calling runApp()'),
     );
 
     runApp(const RossTabakApp());
+
+    await _writeToLog(
+      _formatError(stage: 'AppStart', error: 'runApp() completed successfully'),
+    );
   } catch (e, stackTrace) {
     await _writeToLog(
       _formatError(stage: 'main() catch', error: e, stackTrace: stackTrace),
     );
 
-    // Перебрасываем, чтобы приложение всё равно упало с ошибкой
-    // (но лог уже записан)
+    // Keep the app alive for 2 seconds so the log write completes
+    await Future.delayed(const Duration(seconds: 2));
+
+    // Rethrow so the OS knows the app crashed
     rethrow;
   }
 }
