@@ -1,15 +1,14 @@
 import 'dart:io';
-import 'package:sqflite/sqflite.dart';
 
 import '../database/database_helper.dart';
+import '../utils/app_paths.dart';
 
 class BackupService {
   static final BackupService instance = BackupService._();
   BackupService._();
 
   Future<String> get _backupDir async {
-    final dbPath = await getDatabasesPath();
-    final backupDir = Directory('$dbPath/backups');
+    final backupDir = Directory(AppPaths.backupDirectory);
     if (!await backupDir.exists()) {
       await backupDir.create(recursive: true);
     }
@@ -17,7 +16,7 @@ class BackupService {
   }
 
   Future<String> createBackup() async {
-    final dbPath = await getDatabasesPath();
+    final dbPath = AppPaths.databaseDirectory;
     final dbName = 'rosstabak.db';
     final source = '$dbPath/$dbName';
 
@@ -35,7 +34,7 @@ class BackupService {
   }
 
   Future<String> restoreFromFile(String filePath) async {
-    final dbPath = await getDatabasesPath();
+    final dbPath = AppPaths.databaseDirectory;
     final dbName = 'rosstabak.db';
     final destination = '$dbPath/$dbName';
 

@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../constants/app_constants.dart';
 import '../constants/app_roles.dart';
 import '../core/password_hash.dart';
+import '../utils/app_paths.dart';
 import 'migrations/migration_001_initial.dart';
 import 'migrations/migration_002_add_comments_and_settings.dart';
 import 'migrations/migration_003_add_shift_reports.dart';
@@ -26,53 +27,12 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
-  /// Writes a diagnostic message to %LOCALAPPDATA%/RossTabak/logs/rosstabak_error.log.
-  static void _logToFile(String message) {
-    try {
-      final logDir = Directory(_getLogDirectoryPath());
-      if (!logDir.existsSync()) {
-        logDir.createSync(recursive: true);
-      }
-      final file = File(_getLogFilePath());
-      file.writeAsStringSync(
-        '${DateTime.now().toIso8601String()} | $message\n',
-        mode: FileMode.append,
-      );
-    } catch (_) {
-      // Silently ignore log write failures to avoid recursion.
-    }
-  }
-
-  /// Returns the path to the logs directory.
-  /// Uses %LOCALAPPDATA% on Windows (always writable).
-  static String _getLogDirectoryPath() {
-    if (Platform.isWindows) {
-      final appData =
-          Platform.environment['LOCALAPPDATA'] ??
-          Platform.environment['APPDATA'] ??
-          '${Platform.environment['USERPROFILE']}\\AppData\\Local';
-      return '$appData\\RossTabak\\logs';
-    } else if (Platform.isLinux) {
-      final home = Platform.environment['HOME'] ?? '/tmp';
-      return '$home/.local/share/RossTabak/logs';
-    } else if (Platform.isMacOS) {
-      final home = Platform.environment['HOME'] ?? '/tmp';
-      return '$home/Library/Logs/RossTabak';
-    } else {
-      return 'logs';
-    }
-  }
-
-  /// Full path to the error log file.
-  static String _getLogFilePath() =>
-      '${_getLogDirectoryPath()}/rosstabak_error.log';
-
   Future<Database> get database async {
     if (_database != null) {
       return _database!;
     }
 
-    _database = await _initDB(AppConstants.dbName);
+    _database = await _initDB();
     return _database!;
   }
 
@@ -83,34 +43,14 @@ class DatabaseHelper {
     }
   }
 
-  Future<Database> _initDB(String fileName) async {
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, fileName);
+  Future<Database> _initDB() async {
+    // Use AppPaths to get the database path in %APPDATA%/RossTabak/database/
+    final dbDir = AppPaths.databaseDirectory;
+    final path = p.join(dbDir, AppConstants.dbName);
 
-    // Debug output for diagnosis
-    debugPrint('DB: dbPath=$dbPath, fileName=$fileName, fullPath=$path');
-    stdout.writeln('DB: dbPath=$dbPath, fileName=$fileName, fullPath=$path');
-
-    _logToFile(
-      'DB: dbPath=$dbPath, fileName=$fileName, fullPath=$path, version=${AppConstants.dbVersion}',
-    );
-
-    // Ensure the parent directory of the database file exists.
-    // sqflite_common_ffi does NOT create directories automatically.
-    try {
-      final dbDir = Directory(p.dirname(path));
-      if (!await dbDir.exists()) {
-        debugPrint('DB: creating directory: ${dbDir.path}');
-        stdout.writeln('DB: creating directory: ${dbDir.path}');
-        _logToFile('DB: creating directory: ${dbDir.path}');
-        await dbDir.create(recursive: true);
-      }
-    } catch (e, stackTrace) {
-      debugPrint('DB: FAILED to create directory: $e');
-      stdout.writeln('DB: FAILED to create directory: $e');
-      _logToFile('DB: FAILED to create directory: $e\n$stackTrace');
-      rethrow;
-    }
+    // Diagnostic output
+    debugPrint('DB: databaseDirectory=$dbDir, fullPath=$path');
+    stdout.writeln('DB: databaseDirectory=$dbDir, fullPath=$path');
 
     try {
       final db = await openDatabase(
@@ -118,47 +58,27 @@ class DatabaseHelper {
         version: AppConstants.dbVersion,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
-          _logToFile('DB: PRAGMA foreign_keys = ON executed');
         },
-        onCreate: (db, version) async {
-          _logToFile('DB: onCreate called, version=$version');
-          await _createDB(db, version);
-          _logToFile('DB: onCreate completed');
-        },
-        onUpgrade: (db, oldVersion, newVersion) async {
-          _logToFile(
-            'DB: onUpgrade called, oldVersion=$oldVersion, newVersion=$newVersion',
-          );
-          await _upgradeDB(db, oldVersion, newVersion);
-          _logToFile('DB: onUpgrade completed');
-        },
+        onCreate: _createDB,
+        onUpgrade: _upgradeDB,
         onOpen: (db) async {
-          _logToFile('DB: onOpen called');
           if (await _needsEmployeeSchemaUpgrade(db)) {
-            _logToFile(
-              'DB: applying fifthStageMigrations (employee schema upgrade)',
-            );
             for (final query in fifthStageMigrations) {
               await db.execute(query);
             }
-            _logToFile('DB: fifthStageMigrations applied');
           }
           await _ensureAdminExists(db);
-          _logToFile('DB: onOpen completed');
         },
       );
-      _logToFile('DB: openDatabase completed successfully');
       return db;
     } catch (e, stackTrace) {
       debugPrint('DB: openDatabase FAILED: $e');
       stdout.writeln('DB: openDatabase FAILED: $e');
-      _logToFile('DB: openDatabase FAILED: $e\n$stackTrace');
       rethrow;
     }
   }
 
   Future<void> _ensureAdminExists(Database db) async {
-    _logToFile('DB: _ensureAdminExists checking for admin user');
     try {
       final existingAdmin = await db.query(
         'employees',
@@ -168,9 +88,6 @@ class DatabaseHelper {
       );
 
       if (existingAdmin.isEmpty) {
-        _logToFile(
-          'DB: _ensureAdminExists admin not found, creating default admin',
-        );
         final now = DateTime.now().toIso8601String();
         final adminPassword = 'admin123';
 
@@ -186,20 +103,17 @@ class DatabaseHelper {
         };
 
         await db.insert('employees', adminData);
-        _logToFile('DB: _ensureAdminExists admin created');
 
         await _ensureDefaultCategories(db);
-      } else {
-        _logToFile('DB: _ensureAdminExists admin already exists');
       }
-    } catch (e, stackTrace) {
-      _logToFile('DB: _ensureAdminExists FAILED: $e\n$stackTrace');
+    } catch (e) {
+      debugPrint('DB: _ensureAdminExists FAILED: $e');
+      stdout.writeln('DB: _ensureAdminExists FAILED: $e');
       rethrow;
     }
   }
 
   Future<void> _ensureDefaultCategories(Database db) async {
-    _logToFile('DB: _ensureDefaultCategories checking for default categories');
     try {
       final existing = await db.query(
         'task_categories',
@@ -209,7 +123,6 @@ class DatabaseHelper {
       );
 
       if (existing.isEmpty) {
-        _logToFile('DB: _ensureDefaultCategories creating default categories');
         final categories = [
           {'name': 'Склад', 'description': 'Задачи по работе со складом'},
           {'name': 'Витрина', 'description': 'Задачи по работе с витриной'},
@@ -229,12 +142,10 @@ class DatabaseHelper {
             'created_at': DateTime.now().toIso8601String(),
           });
         }
-        _logToFile('DB: _ensureDefaultCategories completed');
-      } else {
-        _logToFile('DB: _ensureDefaultCategories categories already exist');
       }
-    } catch (e, stackTrace) {
-      _logToFile('DB: _ensureDefaultCategories FAILED: $e\n$stackTrace');
+    } catch (e) {
+      debugPrint('DB: _ensureDefaultCategories FAILED: $e');
+      stdout.writeln('DB: _ensureDefaultCategories FAILED: $e');
       rethrow;
     }
   }
